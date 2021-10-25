@@ -4,7 +4,7 @@ declare interface IFormikTutorWebPartStrings {
   DescriptionFieldLabel: string;
 }
 
-declare module 'FormikTutorWebPartStrings' {
+declare module "FormikTutorWebPartStrings" {
   const strings: IFormikTutorWebPartStrings;
   export = strings;
 }
