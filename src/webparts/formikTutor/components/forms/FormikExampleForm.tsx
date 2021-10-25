@@ -6,7 +6,7 @@ import {
   Text,
   TextField,
 } from "@fluentui/react";
-import { ErrorMessage, Form, Formik, FormikHelpers } from "formik";
+import { ErrorMessage, FieldArray, Form, Formik, FormikHelpers } from "formik";
 import React from "react";
 import * as yup from "yup";
 import FormikDatePicker from "./customFields/FormikDatePicker";
@@ -31,12 +31,16 @@ const errorStyle = {
  */
 interface FormikValues {
   person: {
-    checks?: {
-      checkEmailRequired: boolean;
-      checkWebsiteVisible: boolean;
-      checkWebsiteActive: boolean;
+    misc?: {
+      checks?: {
+        checkEmailRequired: boolean;
+        checkWebsiteVisible: boolean;
+        checkWebsiteActive: boolean;
+      };
+      passwordConfirmation: string;
     };
-    name: string;
+    fullName: string;
+    password: string;
     age: number;
     photo: File;
     email: string;
@@ -48,6 +52,9 @@ interface FormikValues {
     }[];
   };
 }
+/**
+ * Получение вчерашней даты
+ */
 const date = new Date();
 const yesterday = new Date(date.getTime());
 yesterday.setDate(date.getDate() - 1);
@@ -69,17 +76,21 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
          */
         initialValues={{
           person: {
-            name: "",
+            fullName: "",
+            password: "",
             age: null,
             email: "",
             website: "",
             registrationDate: null,
             pets: [],
             photo: null,
-            checks: {
-              checkEmailRequired: false,
-              checkWebsiteVisible: false,
-              checkWebsiteActive: false,
+            misc: {
+              checks: {
+                checkEmailRequired: false,
+                checkWebsiteVisible: false,
+                checkWebsiteActive: false,
+              },
+              passwordConfirmation: "",
             },
           },
         }}
@@ -98,7 +109,7 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
              */
             person: yup.object().shape({
               /**
-               * Поле name представляет собой строку, обязательную к заполнению, состоящую из кириллицы, пробелов и тире.
+               * Поле fullName представляет собой строку, обязательную к заполнению, состоящую из кириллицы, пробелов и тире.
                * При желании в "ограничивающие" методы можно передавать сообщение,
                * которое будет записываться в поле errors.
                * Порядок "ограничивающих" методов важен:
@@ -107,13 +118,21 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
                * matches(regex, 'Нарушен regex').required('Поле обязательно для заполнения') -- выведет 'Нарушен regex'
                * required('Поле обязательно для заполнения').matches(regex, 'Нарушен regex') -- выведет 'Поле обязательно для заполнения'
                */
-              name: yup
+              fullName: yup
                 .string()
                 .required(requiredMessage)
                 .matches(
                   /^[А-Я][а-я]*((\s|-)[А-Я][а-я]*)*$/,
                   "Поле должно соответствовать имени человека"
                 ),
+              password: yup
+                .string()
+                .required(requiredMessage)
+                .oneOf(
+                  [yup.ref("misc.passwordConfirmation"), null],
+                  "Пароли должны совпадать"
+                ),
+              passwordConfirmation: yup.string(),
               age: yup
                 .number()
                 /**
@@ -124,7 +143,7 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
                 .positive("Поле может содержать только положительные значения")
                 .integer("Поле может содержать только целочисленные значения"),
               //photo: yup.,
-              email: yup.string().when("checks.checkEmailRequired", {
+              email: yup.string().when("misc.checks.checkEmailRequired", {
                 is: true,
                 then: yup
                   .string()
@@ -135,6 +154,7 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
               website: yup.string().url("Поле должно содержать ссылку на сайт"),
               registrationDate: yup
                 .date()
+                .typeError("Поле должно содержать дату")
                 .min(
                   yesterday,
                   "Дата регистрации должна не раньше настоящей даты"
@@ -163,9 +183,8 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
            */
           formikHelpers: FormikHelpers<FormikValues>
         ): void | Promise<any> => {
-          alert(
-            JSON.stringify({ ...values.person, checks: undefined }, null, 2)
-          );
+          alert(JSON.stringify({ ...values.person, misc: undefined }, null, 2));
+          formikHelpers.resetForm();
         }}
         /**
          * Функция, которая будет вызываться при сбросе формы
@@ -219,21 +238,21 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
             <Form>
               <h1>Регистрация</h1>
               <TextField
-                label="Имя"
+                label="ФИО"
                 /**
                  * В данное поле следует ввести название переменной за которую отвечает данное поле.
                  * Вложенные переменные пишутся через точку
                  */
-                name={"person.name"}
+                name={"person.fullName"}
                 /**
                  * Поле содержит идентификатор используемый реактом. Особенно важен при генерации полей.
                  */
-                key={"person.name"}
+                key={"person.fullName"}
                 /**
                  * В данное поле следует указать переменнуую за которое отвечает данное поле
                  * Помним, что все контролируемые переменные лежат в values
                  */
-                value={values.person.name}
+                value={values.person.fullName}
                 /**
                  * В данное поле вносится сообщение об ошибке.
                  * Если мы хотим показывать ошибку только ПОСЛЕ того как поле было посещено,
@@ -243,7 +262,9 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
                  * то придется расписывать вывод ошибок(Могут появиться проблемы, особенно при генерации полей для вложенных массивов).
                  * Иначе можно использовать formik компонент <ErrorMessage name="тут пишем имя переменной, то же, что и выше" />
                  */
-                errorMessage={touched?.person?.name ? errors?.person?.name : ""}
+                errorMessage={
+                  touched?.person?.fullName ? errors?.person?.fullName : ""
+                }
                 /**
                  * Не забываем повесить обработчики
                  */
@@ -254,7 +275,7 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
                * Вариант использующий вывод ошибки при помощи formik. Далее буду использовать его
                */}
               <ErrorMessage
-                name="person.name"
+                name="person.fullName"
                 render={(msg) => <Text styles={errorStyle}>{msg}</Text>}
               />
               <TextField
@@ -270,26 +291,52 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
                 render={(msg) => <Text styles={errorStyle}>{msg}</Text>}
               />
               <>
+                <TextField
+                  label={"Пароль"}
+                  name={"person.password"}
+                  key={"person.password"}
+                  value={values.person.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                />
+                <ErrorMessage
+                  name="person.password"
+                  render={(msg) => <Text styles={errorStyle}>{msg}</Text>}
+                />
+                <TextField
+                  label={"Подтверждение пароля"}
+                  name={"person.misc.passwordConfirmation"}
+                  key={"person.misc.passwordConfirmation"}
+                  value={values.person.misc.passwordConfirmation}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                />
+                <ErrorMessage
+                  name="person.misc.passwordConfirmation"
+                  render={(msg) => <Text styles={errorStyle}>{msg}</Text>}
+                />
+              </>
+              <>
                 <Checkbox
                   label={"Сделать email обязательным полем"}
-                  name={"person.checks.checkEmailRequired"}
-                  key={"person.checks.checkEmailRequired"}
-                  checked={values.person.checks.checkEmailRequired}
+                  name={"person.misc.checks.checkEmailRequired"}
+                  key={"person.misc.checks.checkEmailRequired"}
+                  checked={values.person.misc.checks.checkEmailRequired}
                   onChange={handleChange}
                 />
                 <Checkbox
                   label={"Сделать сайт видимым полем"}
-                  name={"person.checks.checkWebsiteVisible"}
-                  key={"person.checks.checkWebsiteVisible"}
-                  checked={values.person.checks.checkWebsiteVisible}
+                  name={"person.misc.checks.checkWebsiteVisible"}
+                  key={"person.misc.checks.checkWebsiteVisible"}
+                  checked={values.person.misc.checks.checkWebsiteVisible}
                   onChange={handleChange}
                 />
                 <Checkbox
                   label={"Сделать сайт активным полем"}
-                  disabled={!values.person.checks.checkWebsiteVisible}
-                  name={"person.checks.checkWebsiteActive"}
-                  key={"person.checks.checkWebsiteActive"}
-                  checked={values.person.checks.checkWebsiteActive}
+                  disabled={!values.person.misc.checks.checkWebsiteVisible}
+                  name={"person.misc.checks.checkWebsiteActive"}
+                  key={"person.misc.checks.checkWebsiteActive"}
+                  checked={values.person.misc.checks.checkWebsiteActive}
                   onChange={handleChange}
                 />
               </>
@@ -309,14 +356,14 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
                * Условный рендеринг компонент. Текстовое поле сайта будет отображено только в том случае,
                * если checkWebsiteVisible == true
                */}
-              {values.person.checks.checkWebsiteVisible && (
+              {values.person.misc.checks.checkWebsiteVisible && (
                 <>
                   <TextField
                     label={"Сайт"}
                     name={"person.website"}
                     key={"person.website"}
                     value={values.person.website}
-                    disabled={!values.person.checks.checkWebsiteActive}
+                    disabled={!values.person.misc.checks.checkWebsiteActive}
                     onChange={handleChange}
                     onBlur={handleBlur}
                   />
@@ -345,6 +392,64 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
                 name="person.photo"
                 onChange={(e) => console.log(e.target.files[0])}
               />
+              <FieldArray
+                name="person.pets"
+                render={(arrayHelpers) => {
+                  return (
+                    <Stack>
+                      <h2>Питомцы</h2>
+                      {values.person.pets.map((pet, petId, pets) => (
+                        <>
+                          <PrimaryButton
+                            text={`Добавить перед ${petId + 1} питомцем`}
+                            onClick={() =>
+                              arrayHelpers.insert(petId, {
+                                name: "",
+                                age: null,
+                              })
+                            }
+                          />
+                          <Stack
+                            horizontal
+                            styles={{ root: { margin: "auto" } }}
+                          >
+                            <DefaultButton
+                              text="Удалить питомца"
+                              onClick={() => arrayHelpers.remove(petId)}
+                              styles={{ root: { margin: "auto" } }}
+                            />
+                            <Stack>
+                              <TextField
+                                label={`Имя питомца ${petId + 1}`}
+                                name={`person.pets[${petId}].name`}
+                                key={`person.pets[${petId}].name`}
+                                value={pet?.name}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                              />
+                              <TextField
+                                label={`Возраст питомца ${petId + 1}`}
+                                name={`person.pets[${petId}].age`}
+                                key={`person.pets[${petId}].age`}
+                                value={pet?.age?.toString() || ""}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                              />
+                            </Stack>
+                          </Stack>
+                        </>
+                      ))}
+                      <PrimaryButton
+                        text="Добавить питомца"
+                        onClick={() =>
+                          arrayHelpers.push({ name: "", age: null })
+                        }
+                      />
+                    </Stack>
+                  );
+                }}
+              />
+
               {/**
                * Кнопки сбросить и отправить
                */}
