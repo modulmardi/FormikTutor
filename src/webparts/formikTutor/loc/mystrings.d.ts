@@ -1,7 +1,7 @@
 declare interface IFormikTutorWebPartStrings {
   PropertyPaneDescription: string;
   BasicGroupName: string;
-  DescriptionFieldLabel: string;
+  ListNameFieldLabel: string;
 }
 
 declare module "FormikTutorWebPartStrings" {

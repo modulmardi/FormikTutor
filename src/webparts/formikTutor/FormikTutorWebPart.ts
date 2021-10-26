@@ -1,5 +1,8 @@
 import { Version } from "@microsoft/sp-core-library";
-import { IPropertyPaneConfiguration } from "@microsoft/sp-property-pane";
+import {
+  IPropertyPaneConfiguration,
+  PropertyPaneTextField,
+} from "@microsoft/sp-property-pane";
 import { BaseClientSideWebPart } from "@microsoft/sp-webpart-base";
 import * as strings from "FormikTutorWebPartStrings";
 import * as React from "react";
@@ -8,7 +11,7 @@ import FormikTutorApp from "./components/FormikTutorApp";
 import { IFormikTutorProps } from "./components/IFormikTutorProps";
 
 export interface IFormikTutorWebPartProps {
-  description: string;
+  listName: string;
 }
 
 export default class FormikTutorWebPart extends BaseClientSideWebPart<IFormikTutorWebPartProps> {
@@ -16,7 +19,7 @@ export default class FormikTutorWebPart extends BaseClientSideWebPart<IFormikTut
     const element: React.ReactElement<IFormikTutorProps> = React.createElement(
       FormikTutorApp,
       {
-        //description: this.properties.description
+        listName: this.properties.listName,
       }
     );
 
@@ -42,9 +45,9 @@ export default class FormikTutorWebPart extends BaseClientSideWebPart<IFormikTut
             {
               groupName: strings.BasicGroupName,
               groupFields: [
-                // PropertyPaneTextField("description", {
-                //   label: strings.DescriptionFieldLabel,
-                // }),
+                PropertyPaneTextField("listName", {
+                  label: strings.ListNameFieldLabel,
+                }),
               ],
             },
           ],

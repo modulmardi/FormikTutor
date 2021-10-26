@@ -1,6 +1,7 @@
 import {
   Checkbox,
   DefaultButton,
+  IconButton,
   PrimaryButton,
   Stack,
   Text,
@@ -11,7 +12,9 @@ import React from "react";
 import * as yup from "yup";
 import FormikDatePicker from "./customFields/FormikDatePicker";
 
-interface FormikExampleFormProps {}
+interface FormikExampleFormProps {
+  listName: string;
+}
 /**
  * Стиль ошибок Formik скопированный из браузера
  */
@@ -36,6 +39,8 @@ interface FormikValues {
         checkEmailRequired: boolean;
         checkWebsiteVisible: boolean;
         checkWebsiteActive: boolean;
+        checkResetOnSubmit: false;
+        checkSendToList: false;
       };
       passwordConfirmation: string;
     };
@@ -63,6 +68,7 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
   props: FormikExampleFormProps
 ) => {
   const requiredMessage: string = "Поле обязательно к заполнению";
+
   return (
     <>
       <Formik
@@ -89,6 +95,8 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
                 checkEmailRequired: false,
                 checkWebsiteVisible: false,
                 checkWebsiteActive: false,
+                checkResetOnSubmit: false,
+                checkSendToList: false,
               },
               passwordConfirmation: "",
             },
@@ -184,7 +192,9 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
           formikHelpers: FormikHelpers<FormikValues>
         ): void | Promise<any> => {
           alert(JSON.stringify({ ...values.person, misc: undefined }, null, 2));
-          formikHelpers.resetForm();
+          if (values.person.misc.checks.checkResetOnSubmit) {
+            formikHelpers.resetForm();
+          }
         }}
         /**
          * Функция, которая будет вызываться при сбросе формы
@@ -413,8 +423,10 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
                             horizontal
                             styles={{ root: { margin: "auto" } }}
                           >
-                            <DefaultButton
-                              text="Удалить питомца"
+                            <IconButton
+                              iconProps={{ iconName: "Delete" }}
+                              title="Удалить питомца"
+                              ariaLabel="Удалить питомца"
                               onClick={() => arrayHelpers.remove(petId)}
                               styles={{ root: { margin: "auto" } }}
                             />
@@ -427,6 +439,9 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
                                 onChange={handleChange}
                                 onBlur={handleBlur}
                               />
+                              <ErrorMessage
+                                name={`person.pets[${petId}].name`}
+                              />
                               <TextField
                                 label={`Возраст питомца ${petId + 1}`}
                                 name={`person.pets[${petId}].age`}
@@ -434,6 +449,9 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
                                 value={pet?.age?.toString() || ""}
                                 onChange={handleChange}
                                 onBlur={handleBlur}
+                              />
+                              <ErrorMessage
+                                name={`person.pets[${petId}].age`}
                               />
                             </Stack>
                           </Stack>
@@ -450,6 +468,22 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
                 }}
               />
 
+              <Stack horizontal>
+                <Checkbox
+                  label={"Сбросить форму при отправке"}
+                  name={"person.misc.checks.checkResetOnSubmit"}
+                  key={"person.misc.checks.checkResetOnSubmit"}
+                  checked={values.person.misc.checks.checkResetOnSubmit}
+                  onChange={handleChange}
+                />
+                <Checkbox
+                  label={"Отправить в лист"}
+                  name={"person.misc.checks.checkSendToList"}
+                  key={"person.misc.checks.checkSendToList"}
+                  checked={values.person.misc.checks.checkSendToList}
+                  onChange={handleChange}
+                />
+              </Stack>
               {/**
                * Кнопки сбросить и отправить
                */}
