@@ -19,9 +19,35 @@ export const imageToSiteAssetsUploader = async (
     .then((value) => {
       console.log(value);
     });
+  return listAssetsFolderName;
 };
 
-export const valuesToListUploader = (context: WebPartContext,) => {};
+export const valuesToListUploader = (
+  context: WebPartContext,
+  value,
+  mapper: []
+) => {
+  let dto;
+  for (const field in mapper) {
+    if (Object.prototype.hasOwnProperty.call(mapper, field)) {
+      const fieldName = mapper[field];
+      if (value[field] instanceof File) {
+
+        dto[fieldName] = `
+        "type":"thumbnail",
+        "fileName":"${(value[field] as File).name}",
+        "nativeFile":{},
+        "fieldName":"image",
+        "serverUrl":"${
+          context.pageContext.site.absoluteUrl.match(/https:\/\/.*\.com/)[0]
+        }",
+        "serverRelativeUrl":"/SiteAssets/Lists/${listAssetsFolderName}/${(value[field] as File).name}",
+        "id":"c18fe04d-006a-4f9b-a0dd-ff529a1f7887"`;
+      }
+      dto[fieldName] = value[field];
+    }
+  }
+};
 
 const getAssetsDriveId = async (client: MSGraphClient) => {
   try {
