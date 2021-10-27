@@ -4,7 +4,6 @@ import { WebPartContext } from "@microsoft/sp-webpart-base";
 export const imageToSiteAssetsUploader = async (
   context: WebPartContext,
   listName: string,
-  fileName: string,
   file: File
 ) => {
   const client = await context.msGraphClientFactory.getClient();
@@ -12,7 +11,7 @@ export const imageToSiteAssetsUploader = async (
   const assetsDriveId = await getAssetsDriveId(client);
   await client
     .api(
-      `drives/${assetsDriveId}/root:/Lists/${listAssetsFolderName}/${fileName}:/content`
+      `drives/${assetsDriveId}/root:/Lists/${listAssetsFolderName}/${file.name}:/content`
     )
     .header("Content-Type", "image/*")
     .put(file)
@@ -24,7 +23,8 @@ export const imageToSiteAssetsUploader = async (
 
 export const valuesToListUploader = (
   context: WebPartContext,
-  value,
+  listName: string,
+  value: object,
   mapper: []
 ) => {
   let dto;
@@ -32,16 +32,23 @@ export const valuesToListUploader = (
     if (Object.prototype.hasOwnProperty.call(mapper, field)) {
       const fieldName = mapper[field];
       if (value[field] instanceof File) {
-
+        const file = value[field] as File;
+        const listAssetsFolderName = imageToSiteAssetsUploader(
+          context,
+          listName,
+          file
+        );
         dto[fieldName] = `
         "type":"thumbnail",
-        "fileName":"${(value[field] as File).name}",
+        "fileName":"${file.name}",
         "nativeFile":{},
         "fieldName":"image",
         "serverUrl":"${
           context.pageContext.site.absoluteUrl.match(/https:\/\/.*\.com/)[0]
         }",
-        "serverRelativeUrl":"/SiteAssets/Lists/${listAssetsFolderName}/${(value[field] as File).name}",
+        "serverRelativeUrl":"/SiteAssets/Lists/${listAssetsFolderName}/${
+          file.name
+        }",
         "id":"c18fe04d-006a-4f9b-a0dd-ff529a1f7887"`;
       }
       dto[fieldName] = value[field];
