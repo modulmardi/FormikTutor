@@ -1,5 +1,6 @@
 import { MSGraphClient } from "@microsoft/sp-http";
 import { WebPartContext } from "@microsoft/sp-webpart-base";
+import { convertCyrillicToOdata } from "./odataCyrillycConverter";
 
 export const imageToSiteAssetsUploader = async (
   context: WebPartContext,
@@ -21,16 +22,17 @@ export const imageToSiteAssetsUploader = async (
   return listAssetsFolderName;
 };
 
-export const valuesToListUploader = (
+export const valuesToListUploader = async (
   context: WebPartContext,
   listName: string,
   value: object,
-  mapper: []
+  mapper: {}
 ) => {
-  let dto;
+  let dto: { [field: string]: string };
+
   for (const field in mapper) {
     if (Object.prototype.hasOwnProperty.call(mapper, field)) {
-      const fieldName = mapper[field];
+      let fieldName = convertCyrillicToOdata(mapper[field]);
       if (value[field] instanceof File) {
         const file = value[field] as File;
         const listAssetsFolderName = imageToSiteAssetsUploader(
@@ -48,12 +50,20 @@ export const valuesToListUploader = (
         }",
         "serverRelativeUrl":"/SiteAssets/Lists/${listAssetsFolderName}/${
           file.name
-        }",
-        "id":"c18fe04d-006a-4f9b-a0dd-ff529a1f7887"`;
-      }
-      dto[fieldName] = value[field];
+        }"`;
+      } else dto[fieldName] = value[field];
     }
   }
+  const client = await context.msGraphClientFactory.getClient();
+  await client
+    .api(`/sites/root/lists/%${listName}/items`)
+    .header("Content-Type", "application/json")
+    .put({
+      fields: dto,
+    })
+    .then((value) => {
+      console.log(value);
+    });
 };
 
 const getAssetsDriveId = async (client: MSGraphClient) => {
