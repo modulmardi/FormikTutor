@@ -9,14 +9,7 @@ export const imageToSiteAssetsUploader = async (
   callback: (listAssetsFolderName) => void
 ) => {
   const client = await context.msGraphClientFactory.getClient();
-  const assetsDriveId = await getAssetsDriveId(client);
-  const listAssetsFolderName = await getListAssetsFolderName(client, listName);
-  await client
-    .api(
-      `drives/${assetsDriveId}/root:/List/${listAssetsFolderName}/${file.name}`
-    )
-    .put(file);
-  callback(listAssetsFolderName);
+  getAssetsDriveId(client, listName, getListAssetsFolderName, file, callback);
 };
 
 export const valuesToListUploader = (
@@ -58,20 +51,30 @@ export const valuesToListUploader = (
       }
     }
   }
-  context.msGraphClientFactory.getClient().then((client) =>
-    client
-      .api(`/sites/root/lists/${listName}/items`)
-      .header("Content-Type", "application/json")
-      .post({
-        fields: dto,
-      })
-      .then((value) => {
-        console.log(value);
-      })
+  setTimeout(
+    () =>
+      context.msGraphClientFactory.getClient().then((client) =>
+        client
+          .api(`/sites/root/lists/${listName}/items`)
+          .header("Content-Type", "application/json")
+          .post({
+            fields: dto,
+          })
+          .then((value) => {
+            console.log(value);
+          })
+      ),
+    10000
   );
 };
 
-const getAssetsDriveId = async (client: MSGraphClient) => {
+const getAssetsDriveId = (
+  client: MSGraphClient,
+  listName,
+  getListAssetsFolderName,
+  file,
+  callback
+) => {
   let id: string;
   client.api(`/sites/root/drives?select=weburl,system,name,id`).get(
     (
@@ -92,13 +95,30 @@ const getAssetsDriveId = async (client: MSGraphClient) => {
       console.log(data.value.find((drive) => drive.name == "Site Assets").id);
 
       id = data.value.find((drive) => drive.name == "Site Assets").id;
+      getListAssetsFolderName(
+        client,
+        listName,
+        id,
+        imagePutter,
+        file,
+        callback
+      );
     }
   );
+
   return id;
 };
 
-const getListAssetsFolderName = (client: MSGraphClient, listName: string) => {
-  let dataValue;
+const getListAssetsFolderName = (
+  client: MSGraphClient,
+  listName: string,
+  id,
+  imagePutter,
+  file,
+  callback
+) => {
+  let dataValue: string;
+  console.log(`/sites/root/lists('${listName}')/id`);
   client
     .api(`/sites/root/lists('${listName}')/id`)
     .get(
@@ -110,9 +130,28 @@ const getListAssetsFolderName = (client: MSGraphClient, listName: string) => {
           throw getListAssetsFolderNameError;
         }
         dataValue = data.value;
+        imagePutter(client, id, dataValue, file, callback);
       }
     );
-  return dataValue;
+};
+
+const imagePutter = (
+  client: MSGraphClient,
+  assetsDriveId,
+  listAssetsFolderName,
+  file,
+  callback
+) => {
+  console.log(
+    `drives/${assetsDriveId}/root:/Lists/${listAssetsFolderName}/${file.name}:/content`
+  );
+
+  client
+    .api(
+      `drives/${assetsDriveId}/root:/Lists/${listAssetsFolderName}/${file.name}:/content`
+    )
+    .header("Content-Type", "image/*")
+    .put(file, callback(listAssetsFolderName));
 };
 
 /*
