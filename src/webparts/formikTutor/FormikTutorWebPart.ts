@@ -19,6 +19,7 @@ export default class FormikTutorWebPart extends BaseClientSideWebPart<IFormikTut
     const element: React.ReactElement<IFormikTutorProps> = React.createElement(
       FormikTutorApp,
       {
+        context: this.context,
         listName: this.properties.listName,
       }
     );

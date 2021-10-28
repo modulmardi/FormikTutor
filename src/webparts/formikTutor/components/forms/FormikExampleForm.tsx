@@ -7,12 +7,15 @@ import {
   Text,
   TextField,
 } from "@fluentui/react";
+import { WebPartContext } from "@microsoft/sp-webpart-base";
 import { ErrorMessage, FieldArray, Form, Formik, FormikHelpers } from "formik";
 import React from "react";
 import * as yup from "yup";
+import { valuesToListUploader } from "../../utils/uploaders";
 import FormikDatePicker from "./customFields/FormikDatePicker";
 
 interface FormikExampleFormProps {
+  context: WebPartContext;
   listName: string;
 }
 /**
@@ -192,6 +195,26 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
           formikHelpers: FormikHelpers<FormikValues>
         ): void | Promise<any> => {
           alert(JSON.stringify({ ...values.person, misc: undefined }, null, 2));
+          if (values.person.misc.checks.checkSendToList) {
+            valuesToListUploader(
+              props.context,
+              props.listName,
+              {
+                ...values.person,
+                misc: undefined,
+              },
+              {
+                fullName: "Title",
+                password: "Password",
+                age: "Возраст",
+                email: "E-mail",
+                website: "Web-сайт",
+                registrationDate: "Дата регистрации",
+                //pets: [],
+                photo: "photo",
+              }
+            );
+          }
           if (values.person.misc.checks.checkResetOnSubmit) {
             formikHelpers.resetForm();
           }
@@ -400,7 +423,10 @@ const FormikExampleForm: React.FC<FormikExampleFormProps> = (
               <input
                 type="file"
                 name="person.photo"
-                onChange={(e) => console.log(e.target.files[0])}
+                onChange={(e) => {
+                  console.log(e.target.files[0]);
+                  values.person.photo = e.target.files[0];
+                }}
               />
               <FieldArray
                 name="person.pets"
