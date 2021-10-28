@@ -2,79 +2,21 @@ import { MSGraphClient } from "@microsoft/sp-http";
 import { WebPartContext } from "@microsoft/sp-webpart-base";
 import { convertCyrillicToOdata } from "./odataCyrillycConverter";
 
-export const imageToSiteAssetsUploader = (
+export const imageToSiteAssetsUploader = async (
   context: WebPartContext,
   listName: string,
   file: File,
   callback: (listAssetsFolderName) => void
 ) => {
-  let listAssetsFolderName: any;
-  let assetsDriveId: any;
-
-  context.msGraphClientFactory
-    .getClient()
-    .then((client: MSGraphClient): MSGraphClient => {
-      client
-        .api(`/sites/root/lists('${listName}')/id`)
-        .get(
-          (
-            getListAssetsFolderNameError,
-            data: { "@odata.context": string; value: string }
-          ) => {
-            if (getListAssetsFolderNameError) {
-              throw getListAssetsFolderNameError;
-            }
-            console.log("1_1,", listAssetsFolderName, assetsDriveId);
-            listAssetsFolderName = data.value;
-            return client;
-          }
-        );
-      return client;
-    })
-    .then((client: MSGraphClient): MSGraphClient => {
-      client.api(`/sites/root/drives?select=weburl,system,name,id`).get(
-        (
-          getAssetsDriveIdError,
-          data: {
-            "@odata.context": string;
-            value: {
-              id: string;
-              name: string;
-              webUrl: string;
-              system: object;
-            }[];
-          }
-        ) => {
-          if (getAssetsDriveIdError) {
-            throw getAssetsDriveIdError;
-          }
-          console.log(
-            data.value.find((drive) => drive.name == "Site Assets").id
-          );
-          console.log("2_1,", listAssetsFolderName, assetsDriveId);
-
-          assetsDriveId = data.value.find(
-            (drive) => drive.name == "Site Assets"
-          ).id;
-          return client;
-        }
-      );
-      return client;
-    })
-    .then((client: MSGraphClient): void => {
-      console.log("3_1,", listAssetsFolderName, assetsDriveId);
-
-      client
-        .api(
-          `drives/b!fIkjxDG0pUigdi3jehr6aQ096O3ruPFHqLWrxY6OU-MDPFAQ2AvrQ4etL8kCOrYc/root:/Lists/42d011e6-5077-4888-8148-e856c0b9a5ff/${file.name}:/content`
-        )
-        .header("Content-Type", "image/*")
-        .put(file)
-        .then((value) => {
-          console.log("RRRRRRRRRRRRRRRRRRRRRRRRRRRRRR", value);
-        });
-    })
-    .then(() => {console.log(';;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;',listAssetsFolderName); callback(listAssetsFolderName)});
+  const client = await context.msGraphClientFactory.getClient();
+  const assetsDriveId = await getAssetsDriveId(client);
+  const listAssetsFolderName = await getListAssetsFolderName(client, listName);
+  await client
+    .api(
+      `drives/${assetsDriveId}/root:/List/${listAssetsFolderName}/${file.name}`
+    )
+    .put(file);
+  callback(listAssetsFolderName);
 };
 
 export const valuesToListUploader = (
@@ -107,8 +49,7 @@ export const valuesToListUploader = (
               file.name
             }"}`;
             console.log(dto, value);
-            console.log('FFFFFFFFFFFFFFFFFFFFf', listAssetsFolderName);
-
+            console.log("FFFFFFFFFFFFFFFFFFFFf", listAssetsFolderName);
           }
         );
       } else {
@@ -130,48 +71,49 @@ export const valuesToListUploader = (
   );
 };
 
-// const getAssetsDriveId = async (client: MSGraphClient) => {
-//   await client.api(`/sites/root/drives?select=weburl,system,name,id`).get(
-//     (
-//       getAssetsDriveIdError,
-//       data: {
-//         "@odata.context": string;
-//         value: {
-//           id: string;
-//           name: string;
-//           webUrl: string;
-//           system: object;
-//         }[];
-//       }
-//     ) => {
-//       if (getAssetsDriveIdError) {
-//         throw getAssetsDriveIdError;
-//       }
-//       console.log(data.value.find((drive) => drive.name == "Site Assets").id);
+const getAssetsDriveId = async (client: MSGraphClient) => {
+  let id: string;
+  client.api(`/sites/root/drives?select=weburl,system,name,id`).get(
+    (
+      getAssetsDriveIdError,
+      data: {
+        "@odata.context": string;
+        value: {
+          id: string;
+          name: string;
+          webUrl: string;
+          system: object;
+        }[];
+      }
+    ) => {
+      if (getAssetsDriveIdError) {
+        throw getAssetsDriveIdError;
+      }
+      console.log(data.value.find((drive) => drive.name == "Site Assets").id);
 
-//       return data.value.find((drive) => drive.name == "Site Assets").id;
-//     }
-//   );
-// };
+      id = data.value.find((drive) => drive.name == "Site Assets").id;
+    }
+  );
+  return id;
+};
 
-// const getListAssetsFolderName: = async (
-//   client: MSGraphClient,
-//   listName: string
-// ) => {
-//   return await client
-//     .api(`/sites/root/lists('${listName}')/id`)
-//     .get(
-//       (
-//         getListAssetsFolderNameError,
-//         data: { "@odata.context": string; value: string }
-//       ) => {
-//         if (getListAssetsFolderNameError) {
-//           throw getListAssetsFolderNameError;
-//         }
-//         return data.value;
-//       }
-//     );
-// };
+const getListAssetsFolderName = (client: MSGraphClient, listName: string) => {
+  let dataValue;
+  client
+    .api(`/sites/root/lists('${listName}')/id`)
+    .get(
+      (
+        getListAssetsFolderNameError,
+        data: { "@odata.context": string; value: string }
+      ) => {
+        if (getListAssetsFolderNameError) {
+          throw getListAssetsFolderNameError;
+        }
+        dataValue = data.value;
+      }
+    );
+  return dataValue;
+};
 
 /*
 
